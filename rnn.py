@@ -15,8 +15,8 @@ from sklearn.model_selection import train_test_split
 
 from keras.preprocessing.text import Tokenizer
 from keras.preprocessing.sequence import pad_sequences
-from keras.models import Sequential
-from keras.layers import Dense, Embedding, LSTM, SpatialDropout1D
+from keras.models import Sequential, load_model
+from keras.layers import Dense, Embedding, LSTM, SpatialDropout1D, GRU
 from keras.utils.np_utils import to_categorical
 
 # consts
@@ -30,7 +30,7 @@ def read_data(filename, x_colname, y_colname):
         reads data from filename and extracts features from x_colname and target classes from y_colname
     """
     data = pd.read_csv(filename)
-    return data[x_colname].values, pd.get_dummies(data[y_colname]).values
+    return data[x_colname].values, data[y_colname].values
 
 # TODO: check diff model structures incld with GRU rather than LSTM
 def create_model(max_tokens):
@@ -41,9 +41,9 @@ def create_model(max_tokens):
     model.add(Embedding(input_dim=NUM_WORDS,
                         output_dim=EMBED_DIM,
                         input_length=max_tokens))
-    model.add(SpatialDropout1D(0.4))
-    model.add(LSTM(196, dropout=0.2, recurrent_dropout=0.2))
-    model.add(Dense(2, activation='sigmoid'))
+    model.add(LSTM(units=16, return_sequences=True))
+    model.add(LSTM(units=8))
+    model.add(Dense(1, activation='sigmoid'))
     model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
     return model
 
@@ -78,42 +78,11 @@ print(model.summary())
 model.fit(x_pad, y_text, epochs=EPOCHS, batch_size=BATCH_SIZE, validation_split=0.05, shuffle=True)
 model.save('model.h5')
 
-'''
-validation_size = 1500
-
-X_validate = X_test[-validation_size:]
-Y_validate = Y_test[-validation_size:]
-X_test = X_test[:-validation_size]
-Y_test = Y_test[:-validation_size]
-score,acc = model.evaluate(X_test, Y_test, verbose = 2, batch_size = batch_size)
-print("score: %.2f" % (score))
-print("acc: %.2f" % (acc))
-
-pos_cnt, neg_cnt, pos_correct, neg_correct = 0, 0, 0, 0
-for x in range(len(X_validate)):
-
-    result = model.predict(X_validate[x].reshape(1,X_test.shape[1]),batch_size=1,verbose = 2)[0]
-
-    if np.argmax(result) == np.argmax(Y_validate[x]):
-        if np.argmax(Y_validate[x]) == 0:
-            neg_correct += 1
-        else:
-            pos_correct += 1
-
-    if np.argmax(Y_validate[x]) == 0:
-        neg_cnt += 1
-    else:
-        pos_cnt += 1
-
-print("pos_acc", pos_correct/pos_cnt*100, "%")
-print("neg_acc", neg_correct/neg_cnt*100, "%")
-
-twt = ['like and subscribe', 'the new wii console is interesting']
-#vectorizing the tweet by the pre-fitted tokenizer instance
-twt = tokenizer.texts_to_sequences(twt)
-#padding the tweet to have exactly the same shape as `embedding_2` input
-twt = pad_sequences(twt, maxlen=28, dtype='int32', value=0)
-print(twt)
-sentiment = model.predict(twt,batch_size=1,verbose = 2)
+#model = load_model('model.h5')
+# test prediction
+x_test = ['dont forget to like share and subscribe', 'i was thinking about my old model m keyboard']
+x_test_tokens = tokenizer.texts_to_sequences(x_test)
+x_test_pad = pad_sequences(x_test_tokens, maxlen=max_tokens, padding='pre', truncating='post')
+print(x_test_pad)
+sentiment = model.predict(x_test_pad)
 print(sentiment)
-'''
