@@ -40,6 +40,10 @@ class Tokenizer() {
       this.vocabulary[word]))
   }
 
+  /*get featureLength() {
+    return Object.entries(this.vocabulary).length
+  }*/
+
 }
 
 function readData(text) {
@@ -48,6 +52,26 @@ function readData(text) {
   const xText = lines.map(line => line.split(',')[0])
   const yText = lines.map(line => line.split(',')[1])
   return { xText: xText, yText: yText }
+}
+
+function getFeatureLength(xTokens) {
+  numTokens = nj.array(xTokens.map(tokens => tokens.length))
+  avgTokens = numTokens.mean()/*numTokens.reduce((acc, tokenLength) =>
+    acc + tokenLength)/numTokens.length*/
+  return Math.ceil(avgTokens + 2 * numTokens.std())
+}
+
+/*
+ * Pad pre, truncate post
+ */
+function padSequences(xTokens, maxLength) {
+  if ((maxLength - xTokens) > 0)  {
+    // pad
+    return [...new Array(maxLength - xTokens.length).fill(0),
+      ...xTokens]
+  } else {
+    return xTokens.slice(0, maxLength)
+  }
 }
 
 /**
@@ -62,7 +86,9 @@ async function create_model(text) {
   tokenizer.fitOnTexts(xText)
 
   // preprocess features
-  const { xPad, featureLength } = preprocess_features(xText, tokenizer)
+  const xTokens = tokenizer.textsToSequences(x_texts)
+  const featureLength = getFeatureLength()
+  const xPad = padSequences(xTokens, featureLength)
 }
 
 fs.readFile('dataset/data.csv', 'utf8', (error, data) => {
