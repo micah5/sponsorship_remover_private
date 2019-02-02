@@ -4,6 +4,8 @@
 """Author: Micah Price (98mprice@gmail.com)
 """
 
+import pandas as pd
+
 def read_data(filename, x_colname, y_colname):
     """
     Reads data from filename and extracts features from x_colname and

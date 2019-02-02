@@ -14,7 +14,7 @@ from keras.preprocessing.sequence import pad_sequences
 from keras.models import Sequential, load_model
 from keras.layers import Dense, Embedding, LSTM, SpatialDropout1D
 
-import const
+from .const import *
 
 def create_model(max_tokens):
     """
@@ -67,7 +67,7 @@ def get_feature_length(x_tokens):
     avg_tokens = np.mean(num_tokens)
     return int(avg_tokens + 2 * np.std(num_tokens))
 
-def preprocess_features(x_text, tokenizer, feature_length):
+def preprocess_features(x_text, tokenizer):
     """
     Converts raw text into tokens, and returns
     embedding vector.
@@ -83,10 +83,12 @@ def preprocess_features(x_text, tokenizer, feature_length):
 
     x_tokens = tokenizer.texts_to_sequences(x_text)
 
+    feature_length = get_feature_length(x_tokens)
+
     # zeros added at beginning because this prevents early fatigue of network
     x_pad = pad_sequences(x_tokens, maxlen=feature_length, padding='pre', truncating='post')
 
-    return x_pad
+    return x_pad, feature_length
 
 def train(model, x, y, filename='model.h5', validation_split=0.05):
     """

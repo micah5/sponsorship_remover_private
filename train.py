@@ -12,16 +12,16 @@ from src.rnn import create_model, create_tokenizer, preprocess_features, train, 
 
 def main(argv):
     parser = ArgumentParser()
-    parser.add_argument('filename', help='file to train on', default='')
+    parser.add_argument('filename', help='file to train on', nargs='?', default='dataset/data.csv')
     parser.add_argument('-m', '--model', dest='model_path', help='path to save model to')
 
     args = parser.parse_args()
 
-    x_text, y_text = read_data('data.csv', x_colname='text', y_colname='sentiment')
+    x_text, y_text = read_data(args.filename, x_colname='text', y_colname='sentiment')
 
     tokenizer = create_tokenizer(x_text)
+    x_pad, x_tokens = preprocess_features(x_text, tokenizer=tokenizer, feature_length=feature_length)
     feature_length = get_feature_length(x_tokens)
-    x_pad = preprocess_features(x_text, tokenizer=tokenizer, feature_length=feature_length)
 
     model = create_model(feature_length)
     model.summary()

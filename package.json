@@ -1,0 +1,22 @@
+{
+  "name": "sponsorship-remover",
+  "version": "1.0.0",
+  "description": "adblock for in-video sponsorships",
+  "main": "predict.js",
+  "scripts": {
+    "test": "node predict.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/micah5/sponsorship_remover_private.git"
+  },
+  "author": "Micah Price",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/micah5/sponsorship_remover_private/issues"
+  },
+  "homepage": "https://github.com/micah5/sponsorship_remover_private#readme",
+  "dependencies": {
+    "jquery": "^3.3.1"
+  }
+}
