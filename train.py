@@ -4,6 +4,8 @@
 """Author: Micah Price (98mprice@gmail.com)
 """
 
+import sys
+
 from argparse import ArgumentParser
 
 import src.const
@@ -12,16 +14,15 @@ from src.rnn import create_model, create_tokenizer, preprocess_features, train, 
 
 def main(argv):
     parser = ArgumentParser()
-    parser.add_argument('filename', help='file to train on', nargs='?', default='dataset/data.csv')
-    parser.add_argument('-m', '--model', dest='model_path', help='path to save model to')
+    parser.add_argument('dataset_path', help='file to train on', nargs='?', default='./dataset/data.csv')
+    parser.add_argument('-m', '--model', dest='model_path', help='path to save model to', default='./output/model.h5')
 
     args = parser.parse_args()
 
-    x_text, y_text = read_data(args.filename, x_colname='text', y_colname='sentiment')
+    x_text, y_text = read_data(args.dataset_path, x_colname='text', y_colname='sentiment')
 
     tokenizer = create_tokenizer(x_text)
-    x_pad, x_tokens = preprocess_features(x_text, tokenizer=tokenizer, feature_length=feature_length)
-    feature_length = get_feature_length(x_tokens)
+    x_pad, feature_length = preprocess_features(x_text, tokenizer=tokenizer)
 
     model = create_model(feature_length)
     model.summary()

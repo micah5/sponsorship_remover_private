@@ -1,5 +1,6 @@
 require('@tensorflow/tfjs-node')
 const tf = require('@tensorflow/tfjs')
+global.fetch = require('node-fetch')
 const fs = require('fs')
 const nj = require('numjs')
 const pb = require('progress')
@@ -91,6 +92,11 @@ function padSequences(xTokens, maxLength) {
 async function create_model(text) {
 
   bar.tick({
+    'busyWith': 'Loading Model'
+  })
+  const model = await tf.loadModel('file:///./output/js/model.json')
+
+  bar.tick({
     'busyWith': 'Reading data'
   })
   const { xText, yText } = readData(text)
@@ -115,11 +121,6 @@ async function create_model(text) {
     'busyWith': 'Padding/ truncating sequences'
   })
   const xPad = padSequences(xTokens, featureLength)
-
-  bar.tick({
-    'busyWith': 'Loading Model'
-  })
-  const model = await tf.loadModel('https://foo.bar/tfjs_artifacts/model.json')
 
   bar.tick({
     'busyWith': 'Prediction'

@@ -8,11 +8,12 @@
 
 import numpy as np
 import pandas as pd
+#import tensorflowjs as tfjs # having issues with this on python 3
 
 from keras.preprocessing.text import Tokenizer
 from keras.preprocessing.sequence import pad_sequences
 from keras.models import Sequential, load_model
-from keras.layers import Dense, Embedding, LSTM, SpatialDropout1D
+from keras.layers import Dense, Embedding, LSTM, SpatialDropout1D, GRU
 
 from .const import *
 
@@ -28,11 +29,12 @@ def create_model(max_tokens):
     """
 
     model = Sequential()
-    model.add(Embedding(input_dim=const.NUM_WORDS,
-                        output_dim=const.EMBED_DIM,
+    model.add(Embedding(input_dim=NUM_WORDS,
+                        output_dim=EMBED_DIM,
                         input_length=max_tokens))
-    model.add(SpatialDropout1D(0.4))
-    model.add(LSTM(196, dropout=0.2, recurrent_dropout=0.2))
+    model.add(GRU(units=16, return_sequences=True))
+    model.add(GRU(units=8, return_sequences=True))
+    model.add(GRU(units=4))
     model.add(Dense(1, activation='sigmoid'))
     model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
     return model
@@ -107,10 +109,11 @@ def train(model, x, y, filename='model.h5', validation_split=0.05):
     Returns:
         Trained model.
     """
-    model.fit(x, y, epochs=const.EPOCHS, batch_size=const.BATCH_SIZE,
+    model.fit(x, y, epochs=EPOCHS, batch_size=BATCH_SIZE,
         validation_split=validation_split, shuffle=True)
     if filename != None:
         model.save(filename)
+        #tfjs.converters.save_keras_model(model, './output/js/')
     return model
 
 def predict(model, x_test, tokenizer, feature_length):
