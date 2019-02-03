@@ -2,11 +2,16 @@ require('@tensorflow/tfjs-node')
 const tf = require('@tensorflow/tfjs')
 const fs = require('fs')
 const nj = require('numjs')
+const pb = require('progress')
 
 const numWords = 2000
 const embedDim = 128
 const batchSize = 32
 const epochs = 2
+
+const bar = new pb(':elapseds [:bar] :busyWith...', {
+  total: 9, width: 35
+})
 
 /**
   * Since tf.js doesn't have a built in tokenizer, I had to write my own.
@@ -15,16 +20,22 @@ const epochs = 2
   * NB: I left out num_words from this class because we just use the
   * max feature length anyway, making it redundant
   */
-class Tokenizer() {
+class Tokenizer {
 
   constructor() {
     this.vocabulary = []
   }
 
   fitOnTexts(texts) {
+    bar.tick({
+      'busyWith': 'Finding unique words'
+    })
     const words = texts.reduce((acc, text) => [...acc,
       ...text.split(' ')], [])
     const uniqueWords = [... new Set(words)]
+    bar.tick({
+      'busyWith': 'Creating a word vocabulary'
+    })
     this.vocabulary = uniqueWords.reduce((acc, word, idx) => ({
        ...acc, [word]: idx + 1}), {})
   }
@@ -79,16 +90,48 @@ function padSequences(xTokens, maxLength) {
  */
 async function create_model(text) {
 
+  bar.tick({
+    'busyWith': 'Reading data'
+  })
   const { xText, yText } = readData(text)
 
   // create tokenizer
+  bar.tick({
+    'busyWith': 'Initialising Tokenizer'
+  })
   const tokenizer = new Tokenizer()
+  bar.tick({
+    'busyWith': 'Fitting text'
+  })
   tokenizer.fitOnTexts(xText)
 
   // preprocess features
-  const xTokens = tokenizer.textsToSequences(x_texts)
-  const featureLength = getFeatureLength()
+  bar.tick({
+    'busyWith': 'Converting text to sequences'
+  })
+  const xTokens = tokenizer.textsToSequences(xText)
+  const featureLength = getFeatureLength(xTokens)
+  bar.tick({
+    'busyWith': 'Padding/ truncating sequences'
+  })
   const xPad = padSequences(xTokens, featureLength)
+
+  bar.tick({
+    'busyWith': 'Loading Model'
+  })
+  const model = await tf.loadModel('https://foo.bar/tfjs_artifacts/model.json')
+
+  bar.tick({
+    'busyWith': 'Prediction'
+  })
+  xTest = ['dont forget to like share and subscribe',
+           'i was thinking about my old model m keyboard',
+           'check it out in the link in the description',
+           'this is a review of the brand new television from samsung']
+  const xTestTokens = tokenizer.textsToSequences(xTest)
+  const xTestPad = padSequences(xTestTokens, featureLength)
+  const prediction = model.predict(xTestPad)
+  console.log(prediction)
 }
 
 fs.readFile('dataset/data.csv', 'utf8', (error, data) => {

@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/micah5/sponsorship_remover_private#readme",
   "dependencies": {
-    "jquery": "^3.3.1"
+    "jquery": "^3.3.1",
+    "progress": "^2.0.3"
   }
 }
