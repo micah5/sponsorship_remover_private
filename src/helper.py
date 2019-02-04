@@ -4,6 +4,7 @@
 """Author: Micah Price (98mprice@gmail.com)
 """
 
+import re
 import pandas as pd
 
 def read_data(filename, x_colname, y_colname):
@@ -20,4 +21,14 @@ def read_data(filename, x_colname, y_colname):
         List of feature text, list of target text.
     """
     data = pd.read_csv(filename)
-    return data[x_colname].values, data[y_colname].values
+
+    import re
+    pattern = re.compile("^[a-z]+$")
+
+    # strips words containing non-alphabetic characters
+    # from each string
+    valid_x = list(map(lambda sentence: ' '.join(list(
+        filter(lambda word: pattern.match(word),
+        sentence.split(' ')))), data[x_colname].values))
+
+    return valid_x, data[y_colname].values

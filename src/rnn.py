@@ -6,6 +6,7 @@
    https://www.kaggle.com/ngyptr/lstm-sentiment-analysis-keras
 """
 
+import json
 import numpy as np
 import pandas as pd
 #import tensorflowjs as tfjs # having issues with this on python 3
@@ -51,6 +52,8 @@ def create_tokenizer(x_text):
     """
     tokenizer = Tokenizer(num_words=NUM_WORDS)
     tokenizer.fit_on_texts(x_text)
+    with open('./output/misc/word_index.json', 'w') as outfile:
+        json.dump(tokenizer.word_index, outfile)
     return tokenizer
 
 def get_feature_length(x_tokens):
@@ -65,8 +68,11 @@ def get_feature_length(x_tokens):
     Returns:
         Max feature length (max tokens).
     """
+    print('get feature length')
     num_tokens = np.array([len(tokens) for tokens in x_tokens])
+    print('num_tokens', num_tokens)
     avg_tokens = np.mean(num_tokens)
+    print('avg_tokens', avg_tokens)
     return int(avg_tokens + 2 * np.std(num_tokens))
 
 def preprocess_features(x_text, tokenizer):
@@ -84,11 +90,15 @@ def preprocess_features(x_text, tokenizer):
     """
 
     x_tokens = tokenizer.texts_to_sequences(x_text)
+    print('x_text', x_text[1:2])
+    print('x_tokens', x_tokens[1:2])
 
     feature_length = get_feature_length(x_tokens)
+    print('feature_length', feature_length)
 
     # zeros added at beginning because this prevents early fatigue of network
     x_pad = pad_sequences(x_tokens, maxlen=feature_length, padding='pre', truncating='post')
+    print('x_pad', x_pad.shape)
 
     return x_pad, feature_length
 
@@ -134,5 +144,7 @@ def predict(model, x_test, tokenizer, feature_length):
     x_test_tokens = tokenizer.texts_to_sequences(x_test)
 
     x_test_pad = pad_sequences(x_test_tokens, maxlen=feature_length, padding='pre', truncating='post')
+    print('x_test_pad', x_test_pad.shape)
+    print(x_test_pad)
 
     return model.predict(x_test_pad)

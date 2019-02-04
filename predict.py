@@ -33,9 +33,11 @@ def main(argv):
                   'this is a review of the brand new television from samsung'] #not sponsored
 
     x_text, y_text = read_data(args.dataset_path, x_colname='text', y_colname='sentiment')
+    print(len(x_text), len(y_text))
 
     tokenizer = create_tokenizer(x_text)
     x_pad, feature_length = preprocess_features(x_text, tokenizer=tokenizer)
+    print(feature_length)
 
     model = load_model(args.model_path)
 
