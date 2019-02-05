@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-"""Author: Micah Price (98mprice@gmail.com)
+""" Author: Micah Price (98mprice@gmail.com)
+    Helper and wrapper functions.
 """
 
 import re
