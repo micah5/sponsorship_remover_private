@@ -46,7 +46,7 @@
     button:focus {
       outline:none;
     }
-    button:not(:last-of-type) {
+    button:not(:last-child) {
       margin-bottom: 0.5em;
     }
 
@@ -110,13 +110,15 @@
           <div id="loading"></div>
           <h4>Predicting...</h4>
         </div>
-        <button v-if="predictionPretty.length > 0" @click="toggleBlocker()">
-          turn {{blocking ? 'off' : 'on'}} blocker
-        </button>
-        <h4 v-if="predictionPretty.length > 0">Sponsored Sections</h4>
-        <div v-for="pred in predictionPretty" class="list-row">
-          {{display(pred.startTime)}} - {{display(pred.endTime)}}
-          <button @click="goTo(pred.startTime)">go</button>
+        <div v-if="predictionPretty.length > 0 && oldVideoId == id">
+          <button @click="toggleBlocker()">
+            turn {{blocking ? 'off' : 'on'}} blocker
+          </button>
+          <h4>Sponsored Sections</h4>
+          <div v-for="pred in predictionPretty" class="list-row">
+            {{display(pred.startTime)}} - {{display(pred.endTime)}}
+            <button @click="goTo(pred.startTime)">go</button>
+          </div>
         </div>
         </br>
         <!--

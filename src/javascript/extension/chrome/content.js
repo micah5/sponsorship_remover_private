@@ -11,6 +11,7 @@ let tokenizer = null
 let predictionOutput = null
 let sections = null
 let blocking = false
+let videoId = null
 
 /**
  * Since tf.js doesn't have a built in tokenizer, I had to write my own.
@@ -210,6 +211,31 @@ async function predict(xTest) {
   return outputData
 }
 
+function generatePrettyPrediction() {
+  const predictionPretty = []
+  for (const [idx, section] of sections.entries()) {
+    if (predictionOutput[idx] < 0.5) {
+      if (predictionPretty.length >= 1) {
+        const lastEntry = predictionPretty[predictionPretty.length - 1]
+        if (section.startTime < (lastEntry.endTime + 5)) {
+          predictionPretty[predictionPretty.length - 1].endTime = section.endTime
+        } else {
+          predictionPretty.push({
+            startTime: section.startTime,
+            endTime: section.endTime
+          })
+        }
+      } else {
+        predictionPretty.push({
+          startTime: section.startTime,
+          endTime: section.endTime
+        })
+      }
+    }
+  }
+  return predictionPretty
+}
+
 /* Listen for messages */
 chrome.runtime.onMessage.addListener(async function(msg, sender, sendResponse) {
     if (msg.type) {
@@ -226,6 +252,8 @@ chrome.runtime.onMessage.addListener(async function(msg, sender, sendResponse) {
           break
         case 'predict':
           console.log('predict')
+          predictionOutput = null
+          videoId = msg.id
           sendResponse(true)
           sections = await getTranscript(msg.id)
           const xTest = sections.map(obj => obj.text)
@@ -247,8 +275,7 @@ chrome.runtime.onMessage.addListener(async function(msg, sender, sendResponse) {
           }
           break
         case 'goTo':
-          console.log('im in goto', msg)
-          if (msg.seconds) {
+          if ('seconds' in msg) {
             console.log('skipping to', msg.seconds, 'seconds')
             document.getElementsByClassName("html5-main-video")[0].currentTime = msg.seconds
             sendResponse(true)
@@ -259,8 +286,9 @@ chrome.runtime.onMessage.addListener(async function(msg, sender, sendResponse) {
         case 'toggleBlocking':
           blocking = !blocking
           if (blocking) {
-            const sponsoredSections = sections.filter((section, idx) => predictionOutput[idx] < 0.5)
+            const sponsoredSections = generatePrettyPrediction()
             const interval = setInterval(() => {
+              if (!blocking) clearInterval(interval)
               const currentTime = document.getElementsByClassName("html5-main-video")[0].currentTime
               for (const section of sponsoredSections) {
                 if (section.startTime < currentTime && currentTime < section.endTime) {
@@ -274,6 +302,9 @@ chrome.runtime.onMessage.addListener(async function(msg, sender, sendResponse) {
         case 'isBlocking':
           sendResponse(blocking)
           break
+        case 'getVideoId':
+          sendResponse(videoId)
+          break
       }
     }
-});
+})

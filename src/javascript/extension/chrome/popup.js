@@ -7,7 +7,8 @@ new Vue({
     loadingModel: false,
     tab: null,
     loadingPrediction: false,
-    blocking: false
+    blocking: false,
+    oldVideoId: null
   },
   mounted: function () {
     console.log('started', document)
@@ -29,6 +30,10 @@ new Vue({
       chrome.tabs.sendMessage(this.tab.id, { type: "isBlocking" },
         (res) => {
           this.blocking = res
+      })
+      chrome.tabs.sendMessage(this.tab.id, { type: "getVideoId" },
+        (res) => {
+          this.oldVideoId = res
       })
     })
   },
@@ -84,6 +89,7 @@ new Vue({
              (res) => {
                if (res) {
                  this.predictionResult = res
+                 this.oldVideoId = this.id
                  clearInterval(interval)
                  this.loadingPrediction = false
                }
