@@ -43,6 +43,12 @@
     button:hover {
       background-color: #E94153;
     }
+    button:focus {
+      outline:none;
+    }
+    button:not(:last-of-type) {
+      margin-bottom: 0.5em;
+    }
 
     #loading {
       display: inline-block;
@@ -62,6 +68,24 @@
     @-webkit-keyframes spin {
       to { -webkit-transform: rotate(360deg); }
     }
+
+    .list-row {
+      padding-top: 1em;
+      padding-bottom: 0.5em;
+      border-bottom: 1px solid black;
+      position: relative;
+    }
+
+    .list-row:first-of-type {
+      padding-top: 0;
+    }
+
+    .list-row > button {
+      position: absolute;
+      right: 0;
+      bottom: 0.5em;
+    }
+
     </style>
   </head>
   <div id="app">
@@ -80,16 +104,20 @@
       <div v-else>
         <h4>Current video id: {{id}}</h4>
         <button v-if="!loadingPrediction" @click="startPrediction">
-          start
+          {{predictionPretty.length > 0 ? 'predict again' : 'start'}}
         </button>
         <div v-else>
           <div id="loading"></div>
           <h4>Predicting...</h4>
-          <div>Once it's done predicting the sponsored sections, it'll automatically block
-            them in the video
-          </div>
         </div>
-        {{predictionPretty}}
+        <button v-if="predictionPretty.length > 0" @click="toggleBlocker()">
+          turn {{blocking ? 'off' : 'on'}} blocker
+        </button>
+        <h4 v-if="predictionPretty.length > 0">Sponsored Sections</h4>
+        <div v-for="pred in predictionPretty" class="list-row">
+          {{display(pred.startTime)}} - {{display(pred.endTime)}}
+          <button @click="goTo(pred.startTime)">go</button>
+        </div>
         </br>
         <!--
           <button @click="openLink('https://github.com/98mprice/sponsorship_remover')">github</button>

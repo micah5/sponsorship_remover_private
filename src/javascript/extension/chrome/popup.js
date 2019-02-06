@@ -1,15 +1,3 @@
-/*document.getElementById('recordTime').onclick = () => {
-  chrome.tabs.query({"active": true, "lastFocusedWindow": true}, (tabs) => {
-    tabURL = tabs[0].url;
-    let tab = tabs[0]
-    this.times.push('kk slider')
-    chrome.tabs.sendMessage(tab.id, { text: "report_back" },
-      (element) => {
-        alert("button was clicked yeeessss " + element);
-      });
-  });
-};*/
-
 new Vue({
   el: '#app',
   data: {
@@ -18,7 +6,8 @@ new Vue({
     predictionResult: null,
     loadingModel: false,
     tab: null,
-    loadingPrediction: false
+    loadingPrediction: false,
+    blocking: false
   },
   mounted: function () {
     console.log('started', document)
@@ -32,7 +21,15 @@ new Vue({
           console.log('got on', res)
           this.on = res
           console.log('huh', this.on)
-        })
+      })
+      chrome.tabs.sendMessage(this.tab.id, { type: "isPredictionDone" },
+        (res) => {
+          this.predictionResult = res
+      })
+      chrome.tabs.sendMessage(this.tab.id, { type: "isBlocking" },
+        (res) => {
+          this.blocking = res
+      })
     })
   },
   computed: {
@@ -42,10 +39,22 @@ new Vue({
         console.log(this.predictionResult)
         for (const [idx, section] of this.predictionResult.sections.entries()) {
           if (this.predictionResult.predictions[idx] < 0.5) {
-            predictionPretty.push({
-              startTime: section.startTime,
-              endTime: section.endTime
-            })
+            if (predictionPretty.length >= 1) {
+              const lastEntry = predictionPretty[predictionPretty.length - 1]
+              if (section.startTime < (lastEntry.endTime + 5)) {
+                predictionPretty[predictionPretty.length - 1].endTime = section.endTime
+              } else {
+                predictionPretty.push({
+                  startTime: section.startTime,
+                  endTime: section.endTime
+                })
+              }
+            } else {
+              predictionPretty.push({
+                startTime: section.startTime,
+                endTime: section.endTime
+              })
+            }
           }
         }
       }
@@ -55,7 +64,7 @@ new Vue({
   watch: {
     loadingModel: function() {
       if (this.loadingModel == true) {
-        var interval = setInterval(() => {
+        const interval = setInterval(() => {
            chrome.tabs.sendMessage(this.tab.id, { type: "isModelPrepared" },
              (res) => {
                //console.log('checking if model is prepared', res)
@@ -65,12 +74,12 @@ new Vue({
                  this.loadingModel = false
                }
            })
-        }, 1000);
+        }, 1000)
       }
     },
     loadingPrediction: function() {
       if (this.loadingPrediction == true) {
-        var interval = setInterval(() => {
+        const interval = setInterval(() => {
            chrome.tabs.sendMessage(this.tab.id, { type: "isPredictionDone" },
              (res) => {
                if (res) {
@@ -79,7 +88,7 @@ new Vue({
                  this.loadingPrediction = false
                }
            })
-        }, 1000);
+        }, 1000)
       }
     }
   },
@@ -103,6 +112,33 @@ new Vue({
           if (res == true) {
             this.loadingPrediction = true
           }
+        }
+      )
+    },
+    display: function(seconds) {
+      // https://stackoverflow.com/questions/3733227/javascript-seconds-to-minutes-and-seconds
+      const hours = seconds / 3600
+      const minutes = (seconds % 3600) / 60
+      seconds %= 60
+
+      return [hours, minutes, seconds].map(this.format).join(':')
+    },
+    format: function(val) {
+      // https://stackoverflow.com/questions/3733227/javascript-seconds-to-minutes-and-seconds
+      return ('0' + Math.floor(val)).slice(-2)
+    },
+    goTo: function(seconds) {
+      console.log('goto', seconds)
+      chrome.tabs.sendMessage(this.tab.id, { type: 'goTo', seconds: seconds },
+        (res) => {
+          console.log('element', res)
+        }
+      )
+    },
+    toggleBlocker: function() {
+      chrome.tabs.sendMessage(this.tab.id, { type: 'toggleBlocking' },
+        (res) => {
+          this.blocking = res
         }
       )
     }

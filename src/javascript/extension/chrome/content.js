@@ -10,6 +10,7 @@ let featureLength = 0
 let tokenizer = null
 let predictionOutput = null
 let sections = null
+let blocking = false
 
 /**
  * Since tf.js doesn't have a built in tokenizer, I had to write my own.
@@ -244,6 +245,34 @@ chrome.runtime.onMessage.addListener(async function(msg, sender, sendResponse) {
               sections: sections
             })
           }
+          break
+        case 'goTo':
+          console.log('im in goto', msg)
+          if (msg.seconds) {
+            console.log('skipping to', msg.seconds, 'seconds')
+            document.getElementsByClassName("html5-main-video")[0].currentTime = msg.seconds
+            sendResponse(true)
+          } else {
+            sendResponse(false)
+          }
+          break
+        case 'toggleBlocking':
+          blocking = !blocking
+          if (blocking) {
+            const sponsoredSections = sections.filter((section, idx) => predictionOutput[idx] < 0.5)
+            const interval = setInterval(() => {
+              const currentTime = document.getElementsByClassName("html5-main-video")[0].currentTime
+              for (const section of sponsoredSections) {
+                if (section.startTime < currentTime && currentTime < section.endTime) {
+                  document.getElementsByClassName("html5-main-video")[0].currentTime = section.endTime
+                }
+              }
+            }, 1000)
+          }
+          sendResponse(blocking)
+          break
+        case 'isBlocking':
+          sendResponse(blocking)
           break
       }
     }
