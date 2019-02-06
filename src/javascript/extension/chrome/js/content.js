@@ -1,3 +1,20 @@
+/**
+ * @author Micah Price (98mprice@gmail.com)
+ * Javascript implementation of predict.py
+ *
+ * Uses tensorflow.js to read in converted Keras model and
+ * run predictions on it. Connected to popup.js via a chrome
+ * listener so that functions can be executed via the extension GUI.
+ *
+ * File dependencies:
+ * - Generated word index at sponsorship_remover_temp_model/master/misc
+ * - Trained model uploaded to sponsorship_remover_temp_model/master/js
+ * - Dataset at sponsorship_remover_temp_model/master/misc
+ *
+ * TODO: Lots of duplicate code with predict.js, probably a good idea to
+ * just grab a version of predict.js from a cdn and remove all the code here.
+ */
+
 // constants
 const numWords = 2000
 const embedDim = 128
@@ -159,11 +176,13 @@ function padSequences(xTokens, maxLength) {
 }
 
 /**
- *  Loads model and runs predictions on it
+ * Loads Model.
+ * @param {string} text String of dataset contents (csv format).
+ * @param {string} wordIndex Object consisting of word-index pairs to be used by tokenizer.
+ * @return {boolean} Success or failure. TODO: Handle failure
  */
 async function loadModel(text, wordIndex) {
 
-  console.log('read words')
   let { xText, yText } = readData(text)
   const alphaWords = []
   for (let sentence of xText) {
@@ -171,24 +190,24 @@ async function loadModel(text, wordIndex) {
   }
   xText = alphaWords
 
-  console.log('create tokenizer')
   tokenizer = new Tokenizer(wordIndex)
-
   //tokenizer.fitOnTexts(xText)
 
-  // preprocess features
-  console.log('preprocess features')
   const xTokens = tokenizer.textsToSequences(xText)
   featureLength = getFeatureLength(xTokens)
 
   const xPad = padSequences(xTokens, featureLength)
 
-  console.log('load model')
   model = await tf.loadModel('https://raw.githubusercontent.com/micah5/sponsorship_remover_temp_model/master/js/model.json')
 
   return true
 }
 
+/**
+ * Asyncronously gets transcript for youtube video.
+ * @param {number} id Current video ID.
+ * @return {array} Array of captions and their respective start/end times.
+ */
 async function getTranscript(id) {
   try {
     const response = await axios.get(`https://sponsorship-remover-wrapper.herokuapp.com/transcript?id=${id}`);
@@ -199,18 +218,27 @@ async function getTranscript(id) {
   }
 }
 
+/**
+ * Asyncronously gets transcript for youtube video.
+ * @param {number} id Id of video.
+ * @return {array} Array of captions and their respective start/end times.
+ */
 async function predict(xTest) {
-  console.log('prediction')
   const xTestTokens = tokenizer.textsToSequences(xTest)
   const xTestPad = padSequences(xTestTokens, featureLength)
   const xTestTensor = tf.tensor2d(xTestPad)
   //xTestTensor.print(true)
   const prediction = model.predict(xTestTensor)
   const outputData = await prediction.dataSync()
-  console.log('output data', outputData)
   return outputData
 }
 
+/**
+ * Creates an array of all the sponsored periods. No input, as it uses the global variables.
+ * Same as the funciton in popup.js.
+ * TODO: Eliminate function in popup.js and use this one to avoid redundancy.
+ * @return {array} Array of start/end times of sponsored periods.
+ */
 function generatePrettyPrediction() {
   const predictionPretty = []
   for (const [idx, section] of sections.entries()) {
@@ -241,17 +269,14 @@ chrome.runtime.onMessage.addListener(async function(msg, sender, sendResponse) {
     if (msg.type) {
       switch (msg.type) {
         case 'prepareModel':
-          console.log('prepareModel')
           sendResponse(true)
           const response = await axios.get('https://raw.githubusercontent.com/micah5/sponsorship_remover_temp_model/master/misc/data.csv')
           const dataset = response.data
           const response2 = await axios.get('https://raw.githubusercontent.com/micah5/sponsorship_remover_temp_model/master/misc/word_index.json')
           const wordIndex = response2.data
           await loadModel(dataset, wordIndex)
-          console.log('loaded')
           break
         case 'predict':
-          console.log('predict')
           predictionOutput = null
           videoId = msg.id
           sendResponse(true)
@@ -260,11 +285,9 @@ chrome.runtime.onMessage.addListener(async function(msg, sender, sendResponse) {
           predictionOutput = await predict(xTest)
           break
         case 'isModelPrepared':
-          console.log('isModelPrepared')
           sendResponse(model ? true : false)
           break
         case 'isPredictionDone':
-          console.log('isPredictionDone')
           if (predictionOutput == null) {
             sendResponse(null)
           } else {
@@ -276,7 +299,6 @@ chrome.runtime.onMessage.addListener(async function(msg, sender, sendResponse) {
           break
         case 'goTo':
           if ('seconds' in msg) {
-            console.log('skipping to', msg.seconds, 'seconds')
             document.getElementsByClassName("html5-main-video")[0].currentTime = msg.seconds
             sendResponse(true)
           } else {

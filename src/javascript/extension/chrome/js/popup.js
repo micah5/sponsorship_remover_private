@@ -1,27 +1,31 @@
-new Vue({
+/**
+ * @author Micah Price (98mprice@gmail.com)
+ * Logic for ../popup.html
+ */
+
+ new Vue({
   el: '#app',
   data: {
-    on: false,
-    id: null,
-    predictionResult: null,
-    loadingModel: false,
-    tab: null,
-    loadingPrediction: false,
-    blocking: false,
-    oldVideoId: null
+    on: false, // whether or not model has been prepared
+    id: null, // video id of current video
+    predictionResult: null, // object containing prediction vector and section data
+    loadingModel: false, // whether or not model is currently being prepared
+    tab: null, // current tab
+    loadingPrediction: false, // whether or not prediction data is currently being prepared
+    blocking: false, // whether or not the sponsor blocker is enabled on the video
+    oldVideoId: null // video id from previous session
   },
+  /**
+   * Initalises everything from previous session, if they exist
+   */
   mounted: function () {
-    console.log('started', document)
     chrome.tabs.query({ "active": true, "lastFocusedWindow": true }, (tabs) => {
       const url = new URL(tabs[0].url)
       this.id = url.searchParams.get("v")
       this.tab = tabs[0]
-      console.log('set tab', this.tab)
       chrome.tabs.sendMessage(this.tab.id, { type: "isModelPrepared" },
         (res) => {
-          console.log('got on', res)
           this.on = res
-          console.log('huh', this.on)
       })
       chrome.tabs.sendMessage(this.tab.id, { type: "isPredictionDone" },
         (res) => {
@@ -38,10 +42,14 @@ new Vue({
     })
   },
   computed: {
+    /**
+     * Creates an array of all the sponsored periods.
+     * TODO: Remove this, as it's duplicate code
+     * @return {array} Array of start/end times of sponsored periods.
+     */
     predictionPretty: function() {
       const predictionPretty = []
       if (this.predictionResult) {
-        console.log(this.predictionResult)
         for (const [idx, section] of this.predictionResult.sections.entries()) {
           if (this.predictionResult.predictions[idx] < 0.5) {
             if (predictionPretty.length >= 1) {
@@ -67,12 +75,14 @@ new Vue({
     }
   },
   watch: {
+    /**
+     * Checks every second to see if the model has been prepared yet.
+     */
     loadingModel: function() {
       if (this.loadingModel == true) {
         const interval = setInterval(() => {
            chrome.tabs.sendMessage(this.tab.id, { type: "isModelPrepared" },
              (res) => {
-               //console.log('checking if model is prepared', res)
                if (res == true) {
                  this.on = true
                  clearInterval(interval)
@@ -82,6 +92,9 @@ new Vue({
         }, 1000)
       }
     },
+    /**
+     * Checks every second to see if the prediction has been done yet.
+     */
     loadingPrediction: function() {
       if (this.loadingPrediction == true) {
         const interval = setInterval(() => {
@@ -99,48 +112,57 @@ new Vue({
     }
   },
   methods: {
+    /**
+     * Sends message to start preparing the model.
+     */
     prepareModel: function() {
       chrome.tabs.sendMessage(this.tab.id, { type: "prepareModel" },
         (res) => {
-          console.log('element', res)
           if (res == true) {
             this.loadingModel = true
           }
       })
     },
+    /**
+     * Opens external link in new tab.
+     */
     openLink: function(url) {
       chrome.tabs.create({ url: url })
     },
+    /**
+     * Sends message to start the prediction.
+     */
     startPrediction: function() {
       chrome.tabs.sendMessage(this.tab.id, { type: 'predict', id: this.id },
         (res) => {
-          console.log('element', res)
           if (res == true) {
             this.loadingPrediction = true
           }
         }
       )
     },
+    /**
+     * Pretty print time.
+     * Taken from: https://stackoverflow.com/questions/3733227/javascript-seconds-to-minutes-and-seconds
+     */
     display: function(seconds) {
-      // https://stackoverflow.com/questions/3733227/javascript-seconds-to-minutes-and-seconds
       const hours = seconds / 3600
       const minutes = (seconds % 3600) / 60
       seconds %= 60
 
-      return [hours, minutes, seconds].map(this.format).join(':')
+      return [hours, minutes, seconds].map(val => ('0' + Math.floor(val)).slice(-2)).join(':')
     },
-    format: function(val) {
-      // https://stackoverflow.com/questions/3733227/javascript-seconds-to-minutes-and-seconds
-      return ('0' + Math.floor(val)).slice(-2)
-    },
+    /**
+     * Sends message to go to point in video.
+     */
     goTo: function(seconds) {
-      console.log('goto', seconds)
       chrome.tabs.sendMessage(this.tab.id, { type: 'goTo', seconds: seconds },
-        (res) => {
-          console.log('element', res)
-        }
+        (res) => { }
       )
     },
+    /**
+     * Sends message to turn the sponsorship blocker for the video on or off.
+     */
     toggleBlocker: function() {
       chrome.tabs.sendMessage(this.tab.id, { type: 'toggleBlocking' },
         (res) => {
