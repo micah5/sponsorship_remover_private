@@ -1,0 +1,16 @@
+{
+    "manifest_version": 2,
+    "name":    "Sponsorship Remover Prototype",
+    "version": "1.0",
+    "content_scripts": [{
+        "matches": ["*://*.youtube.com/*"],
+        "js":      ["content.js", "axios.min.js", "numjs.min.js", "tf.min.js"]
+    }],
+    "browser_action": {
+        "default_icon": "icon.png",
+        "default_title": "Sponsorship Remover Prototype",
+        "default_popup": "popup.html"
+    },
+    "content_security_policy": "script-src 'self' 'unsafe-eval'; object-src 'self'",
+    "permissions": ["activeTab"]
+}

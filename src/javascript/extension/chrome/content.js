@@ -1,33 +1,15 @@
-/**
- * @author Micah Price (98mprice@gmail.com)
- * Javascript implementation of ../python/predict.py
- *
- * Uses tensorflow.js to read in converted Keras model and
- * run predictions on it.
- *
- * File dependencies:
- * - Generated word index at ../../output/misc/word_index.json
- * - Trained model uploaded to sponsorship_remover_temp_model/master/js
- * - Dataset at ../../dataset/data.csv
- */
-
-require('@tensorflow/tfjs-node')
-const tf = require('@tensorflow/tfjs')
-global.fetch = require('node-fetch')
-const fs = require('fs')
-const nj = require('numjs')
-const pb = require('progress')
-
-var wordIndex = require('../../output/misc/word_index.json');
-
+// constants
 const numWords = 2000
 const embedDim = 128
 const batchSize = 32
 const epochs = 2
 
-const bar = new pb(':elapseds [:bar] :busyWith...', {
-  total: 8, width: 35
-})
+// global variables (to prevent multiples)
+let model = null
+let featureLength = 0
+let tokenizer = null
+let predictionOutput = null
+let sections = null
 
 /**
  * Since tf.js doesn't have a built in tokenizer, I had to write my own.
@@ -61,9 +43,6 @@ class Tokenizer {
    * important.
    */
   fitOnTexts(texts) {
-    bar.tick({
-      'busyWith': 'Finding unique words'
-    })
     const words = texts.reduce((acc, text) => [...acc,
       ...text.split(' ')], [])
 
@@ -85,9 +64,6 @@ class Tokenizer {
     sortedFrequencyWords.sort((a, b) => b.count - a.count)
     const uniqueWords = sortedFrequencyWords.map(obj => obj.word)
 
-    bar.tick({
-      'busyWith': 'Creating a word vocabulary'
-    })
     this.vocabulary = uniqueWords.reduce((acc, word, idx) => ({
        ...acc, [word]: idx + 1}), {})
   }
@@ -183,9 +159,9 @@ function padSequences(xTokens, maxLength) {
 /**
  *  Loads model and runs predictions on it
  */
-async function createModel(text) {
+async function loadModel(text, wordIndex) {
 
-  bar.tick({ 'busyWith': 'Reading data' })
+  console.log('read words')
   let { xText, yText } = readData(text)
   const alphaWords = []
   for (let sentence of xText) {
@@ -193,39 +169,82 @@ async function createModel(text) {
   }
   xText = alphaWords
 
-  bar.tick({ 'busyWith': 'Initialising Tokenizer' })
-  const tokenizer = new Tokenizer(wordIndex)
-  bar.tick({ 'busyWith': 'Fitting text' })
+  console.log('create tokenizer')
+  tokenizer = new Tokenizer(wordIndex)
 
   //tokenizer.fitOnTexts(xText)
 
   // preprocess features
-  bar.tick({ 'busyWith': 'Converting text to sequences' })
+  console.log('preprocess features')
   const xTokens = tokenizer.textsToSequences(xText)
-  const featureLength = getFeatureLength(xTokens)
+  featureLength = getFeatureLength(xTokens)
 
-  bar.tick({ 'busyWith': 'Padding/ truncating sequences' })
   const xPad = padSequences(xTokens, featureLength)
 
-  bar.tick({ 'busyWith': 'Loading Model' })
-  const model = await tf.loadModel('https://raw.githubusercontent.com/micah5/sponsorship_remover_temp_model/master/js/model.json')
+  console.log('load model')
+  model = await tf.loadModel('https://raw.githubusercontent.com/micah5/sponsorship_remover_temp_model/master/js/model.json')
 
-  bar.tick({ 'busyWith': 'Prediction' })
-  xTest = ['dont forget to like share and subscribe',
-           'i was thinking about my old model m keyboard',
-           'check it out in the link in the description',
-           'this is a review of the brand new television from samsung']
+  return true
+}
+
+async function getTranscript(id) {
+  try {
+    const response = await axios.get(`https://sponsorship-remover-wrapper.herokuapp.com/transcript?id=${id}`);
+    if (response.data.success) return response.data.sections
+    else return []
+  } catch (error) {
+    return []
+  }
+}
+
+async function predict(xTest) {
+  console.log('prediction')
   const xTestTokens = tokenizer.textsToSequences(xTest)
   const xTestPad = padSequences(xTestTokens, featureLength)
   const xTestTensor = tf.tensor2d(xTestPad)
   //xTestTensor.print(true)
   const prediction = model.predict(xTestTensor)
   const outputData = await prediction.dataSync()
-  bar.tick({ 'busyWith': 'Done' })
-  console.log('\n', outputData)
+  console.log('output data', outputData)
+  return outputData
 }
 
-fs.readFile('../../dataset/data.csv', 'utf8', (error, data) => {
-    if (error) throw error
-    createModel(data.toString())
-})
+/* Listen for messages */
+chrome.runtime.onMessage.addListener(async function(msg, sender, sendResponse) {
+    if (msg.type) {
+      switch (msg.type) {
+        case 'prepareModel':
+          console.log('prepareModel')
+          sendResponse(true)
+          const response = await axios.get('https://raw.githubusercontent.com/micah5/sponsorship_remover_temp_model/master/misc/data.csv')
+          const dataset = response.data
+          const response2 = await axios.get('https://raw.githubusercontent.com/micah5/sponsorship_remover_temp_model/master/misc/word_index.json')
+          const wordIndex = response2.data
+          await loadModel(dataset, wordIndex)
+          console.log('loaded')
+          break
+        case 'predict':
+          console.log('predict')
+          sendResponse(true)
+          sections = await getTranscript(msg.id)
+          const xTest = sections.map(obj => obj.text)
+          predictionOutput = await predict(xTest)
+          break
+        case 'isModelPrepared':
+          console.log('isModelPrepared')
+          sendResponse(model ? true : false)
+          break
+        case 'isPredictionDone':
+          console.log('isPredictionDone')
+          if (predictionOutput == null) {
+            sendResponse(null)
+          } else {
+            sendResponse({
+              predictions: predictionOutput,
+              sections: sections
+            })
+          }
+          break
+      }
+    }
+});
