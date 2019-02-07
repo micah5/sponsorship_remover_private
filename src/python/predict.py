@@ -78,11 +78,11 @@ def main(argv):
         x_test = x_test_sponsored + x_test_not_sponsored
 
     x_text, y_text = read_data('dataset/data.csv', x_colname='text', y_colname='sentiment')
-    print(len(x_text), len(y_text))
+    #print(len(x_text), len(y_text))
 
     tokenizer = create_tokenizer(x_text)
     x_pad, feature_length = preprocess_features(x_text, tokenizer=tokenizer)
-    print(feature_length)
+    #print(feature_length)
 
     model = load_model('./output/model.h5')
 
@@ -97,4 +97,4 @@ def main(argv):
             pred[len(x_test_sponsored):])))/len(x_test_not_sponsored))
 
 if __name__ == "__main__":
-   main(sys.argv[1:])
+    main(sys.argv[1:])
