@@ -23,7 +23,7 @@ node src/javascript/predict.js
 ```
 
 To try the extension, go to `chrome://extensions/` and load the unpacked directory `./src/javascript/extension/chrome`.
-You can see how it works [here](https://youtu.be/stkBeRPUHqQ)
+You can see how it works [here](https://youtu.be/stkBeRPUHqQ).
 
 ## Directory Guide
 ```
