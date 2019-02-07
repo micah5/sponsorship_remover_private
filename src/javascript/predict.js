@@ -20,10 +20,9 @@ const pb = require('progress')
 
 var wordIndex = require('../../output/misc/word_index.json');
 
-const numWords = 2000
-const embedDim = 128
+const numWords = 5000
+const embedDim = 64
 const batchSize = 32
-const epochs = 2
 
 const bar = new pb(':elapseds [:bar] :busyWith...', {
   total: 8, width: 35
@@ -153,8 +152,9 @@ function readData(text) {
  */
 function getFeatureLength(xTokens) {
   numTokens = nj.array(xTokens.map(tokens => tokens.length))
-  avgTokens = numTokens.mean()
-  return Math.round(avgTokens + 2 * numTokens.std())
+  // floor required because js and python seem to handle floating point arithmatic differently
+  avgTokens = Math.floor(numTokens.mean())
+  return Math.floor(avgTokens + 2 * numTokens.std())
 }
 
 /**
@@ -211,10 +211,21 @@ async function createModel(text) {
   const model = await tf.loadModel('https://raw.githubusercontent.com/micah5/sponsorship_remover_temp_model/master/js/model.json')
 
   bar.tick({ 'busyWith': 'Prediction' })
-  xTest = ['dont forget to like share and subscribe',
-           'i was thinking about my old model m keyboard',
-           'check it out in the link in the description',
-           'this is a review of the brand new television from samsung']
+  xTestSponsored = ['mecha fights giant robots youre either in or youre in and best of all you guys can get an ad free 30-day trial a verve',
+                    'premium for people what does that mean well that includes offline viewing you can watch all your favorite shows on the',
+                    'go without internet access and of course it also means no ads need i say more so to start your ad free 30-day trial',
+                    'verve premium just go to verve co slash jacksfilms link in the description again thats verve co slash jacksfilms',
+                    'for a 30-day ad free trial a verve premium oh i have a challenge for you lets create a flag for gamers subscribe',
+                    'for more leaks also click right here to see the preview see i episode uh heres a clip why oh why should you go vegan to',
+                    'this video was made possible by brilliant']
+  xTestNotSponsored = [ 'sometimes submarines sink their systems fail and nobody can get to them before oxygen runs out. as submarines become better at masking themselves submarine tracking technology is simultaneously',
+                        'many submarine operating countries have rescue submarines that can hypothetically be used to save stranded submariners by going down latching on and shuttling sailors to the surface but in practice these have never really had much action',
+                        '24 hours after the last reading these will drift to only about 1.15 miles or 1.85 kilometers of accuracy. now this technique combined with the consultation of maps is usually fine since most of the',
+                        'and some separate systems designed for use when the main systems are compromised but vlf radio forms the bulk of communications with most submarines. but the fact that submarines spend their time underwater in stealth also makes another crucial',
+                        'providers like hp and dell you can often run into proprietary parts limited upgrade ability and configurability and',
+                        'questionable software load outs that can affect the overall experience so the popularity of machines that are',
+                        'built from retail parts by smaller system integrators like ibuypower or main gear is understandable boutique']
+  xTest = [...xTestSponsored, ...xTestNotSponsored]
   const xTestTokens = tokenizer.textsToSequences(xTest)
   const xTestPad = padSequences(xTestTokens, featureLength)
   const xTestTensor = tf.tensor2d(xTestPad)
@@ -223,9 +234,13 @@ async function createModel(text) {
   const outputData = await prediction.dataSync()
   bar.tick({ 'busyWith': 'Done' })
   console.log('\n', outputData)
+  console.log('Sponsored accuracy:', outputData.slice(0,
+    xTestSponsored.length).filter(x => x < 0.5).length/xTestSponsored.length)
+  console.log('Not Sponsored accuracy:', outputData.slice(xTestSponsored.length,
+    xTest.length).filter(x => x >= 0.5).length/xTestNotSponsored.length)
 }
 
-fs.readFile('../../dataset/data.csv', 'utf8', (error, data) => {
+fs.readFile('./dataset/data.csv', 'utf8', (error, data) => {
     if (error) throw error
     createModel(data.toString())
 })

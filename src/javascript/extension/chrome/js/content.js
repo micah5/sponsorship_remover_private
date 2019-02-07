@@ -16,10 +16,9 @@
  */
 
 // constants
-const numWords = 2000
-const embedDim = 128
+const numWords = 5000
+const embedDim = 64
 const batchSize = 32
-const epochs = 2
 
 // global variables (to prevent multiples)
 let model = null
@@ -148,8 +147,9 @@ function readData(text) {
  */
 function getFeatureLength(xTokens) {
   numTokens = nj.array(xTokens.map(tokens => tokens.length))
-  avgTokens = numTokens.mean()
-  return Math.round(avgTokens + 2 * numTokens.std())
+  // floor required because js and python seem to handle floating point arithmatic differently
+  avgTokens = Math.floor(numTokens.mean())
+  return Math.floor(avgTokens + 2 * numTokens.std())
 }
 
 /**

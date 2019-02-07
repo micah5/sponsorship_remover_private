@@ -32,7 +32,7 @@ def main(argv):
     model = create_model(feature_length)
     model.summary()
 
-    train(model, x_pad, y_text, filename=args.model_path, validation_split=0.05)
+    train(model, x_pad, y_text, filename='./output/model.h5', validation_split=0.05)
 
 if __name__ == '__main__':
    main(sys.argv[1:])

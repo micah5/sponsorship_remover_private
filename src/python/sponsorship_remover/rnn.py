@@ -44,15 +44,15 @@ def create_model(max_tokens):
                         output_dim=EMBED_DIM,
                         input_length=max_tokens))
     model.add(GRU(units=16, return_sequences=True))
-    model.add(GRU(units=8, return_sequences=True))
-    model.add(GRU(units=4))
+    model.add(GRU(units=8))
     model.add(Dense(1, activation='sigmoid'))
     model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
     return model
 
 def create_tokenizer(x_text):
     """
-    Creates word embeddings - word to vector.
+    Creates dictionary that maps each unique word to a unique integer
+    token, used to create the word embedding for a specific sequence.
 
     Args:
         x_text: List of raw text to create tokenizer from.
@@ -84,16 +84,16 @@ def get_feature_length(x_tokens):
 
 def preprocess_features(x_text, tokenizer):
     """
-    Converts raw text into tokens, and returns
-    embedding vector.
+    Converts raw text into tokens, and returns padded input vector and
+    length of each feature.
 
     Args:
         x_text: List of raw text.
-        tokenizer: Keras tokenizer used to create embedding.
+        tokenizer: Keras tokenizer used to map words to unique tokens.
         feature_length: Length of each sequence (after padding/ truncating)
 
     Returns:
-        Processed features.
+        Processed features, length of each feature.
     """
 
     x_tokens = tokenizer.texts_to_sequences(x_text)
@@ -107,7 +107,7 @@ def preprocess_features(x_text, tokenizer):
 
 def train(model, x, y, filename='model.h5', validation_split=0.05):
     """
-    Trains model
+    Trains model.
 
     Args:
         model: Keras model.
